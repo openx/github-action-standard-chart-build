@@ -1,0 +1,59 @@
+name: standard-chart-build-deploy
+inputs:
+  chart_dir:
+    required: true
+    description: Relative or absolute path to a chart directory
+  artifact_bucket:
+    required: true
+    description: Bucket to use for artifacts (chart & values)
+  pubsub_topic:
+    required: true
+    description: Pubsub topic used to send trigger message to Spinnaker
+runs:
+  using: composite
+  steps:
+    - name: get short sha
+      id: gh
+      shell: bash
+      run: |
+        sha=${{ github.sha }}
+        echo "GIT_SHORT_SHA=${sha:0:8}" >> $GITHUB_ENV
+    - name: get metadata from chart
+      id: chart_metadata
+      shell: bash
+      run: |
+        appVer=$(cat ${{ inputs.chart_dir }}/Chart.yaml | awk '$1 ~ /appVersion:/ { print $2 }' | tr -d '"')
+        appName=$(cat ${{ inputs.chart_dir }}/Chart.yaml | awk '$1 ~ /^name:/ { print $2 }' | tr -d '"')
+
+        echo "::set-output name=appVersion::$appVer"
+        echo "::set-output name=appName::$appName"
+        echo "CHART_APP_NAME=$appName" >> $GITHUB_ENV 
+        echo "CHART_APP_VERSION=$appVer" >> $GITHUB_ENV
+        echo "CHART_PACKAGED_TGZ=$appName-${appVer}.tgz" >> $GITHUB_ENV
+    - name: build helm chart
+      shell: bash
+      run: |
+        helm package \
+          --app-version=$CHART_APP_VERSION \
+          --version=$CHART_APP_VERSION \
+            ${{ inputs.chart_dir }}
+    - name: upload to bucket
+      shell: bash
+      run: |
+        gsutil cp $CHART_PACKAGED_TGZ             gs://${{ inputs.artifact_bucket }}/$CHART_APP_NAME/$GIT_SHORT_SHA/charts/${CHART_APP_NAME}.tgz
+        gsutil cp ${{ inputs.chart_dir }}/values* gs://${{ inputs.artifact_bucket }}/$CHART_APP_NAME/$GIT_SHORT_SHA/values/
+    - name: trigger spinnaker via pubsub
+      shell: bash
+      run: |
+        json=$(
+          jq  \
+            --null-input \
+            --arg appName     $CHART_APP_NAME \
+            --arg appVersion  $CHART_APP_VERSION \
+            --arg gitCommit   $GIT_SHORT_SHA \
+            --arg gitBranch   ${{ github.ref }} \
+            '{ appName: $appName, appVersion: $appVersion, gitCommit: $gitCommit, gitBranch: $gitBranch, trigger: "github action", }'
+        )
+        echo "JSON: $json"
+        gcloud pubsub topics publish ${{ inputs.pubsub_topic }} --message "$json"
+

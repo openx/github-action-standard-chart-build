@@ -33,7 +33,7 @@ runs:
     - name: generate yaml file with rules
       shell: bash
       run: |
-        helm template  ${{ inputs.chart_dir }} > rules.yaml && \
+        helm template  ${{ inputs.chart_dir }} -f ${{ inputs.chart_dir }}/values.yaml -f ${{ inputs.chart_dir }}/values-prod.yaml > rules.yaml && \
         for f in $(cat rules.yml |yq '.data|keys[]' -r); do yq ".data[\"$f\"]" rules.yml -r > $f; promtool check rules $f;  done
     - name: build helm chart
       shell: bash

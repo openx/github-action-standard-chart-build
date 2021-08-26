@@ -9,6 +9,10 @@ inputs:
   pubsub_topic:
     required: true
     description: Pubsub topic used to send trigger message to Spinnaker
+  trigger:
+    required: false
+    description: A string passed to the 'trigger' field of the pubsub topic
+    default: github action
 runs:
   using: composite
   steps:
@@ -52,8 +56,8 @@ runs:
             --arg appVersion  $CHART_APP_VERSION \
             --arg gitCommit   $GIT_SHORT_SHA \
             --arg gitBranch   ${{ github.ref }} \
-            '{ appName: $appName, appVersion: $appVersion, gitCommit: $gitCommit, gitBranch: $gitBranch, trigger: "github action", }'
+            --arg trigger     '${{ inputs.trigger }}" \
+            '{ appName: $appName, appVersion: $appVersion, gitCommit: $gitCommit, gitBranch: $gitBranch, trigger: $trigger, }'
         )
         echo "JSON: $json"
         gcloud pubsub topics publish ${{ inputs.pubsub_topic }} --message "$json"
-

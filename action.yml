@@ -56,7 +56,7 @@ runs:
             --arg appVersion  $CHART_APP_VERSION \
             --arg gitCommit   $GIT_SHORT_SHA \
             --arg gitBranch   ${{ github.ref }} \
-            --arg trigger     '${{ inputs.trigger }}" \
+            --arg trigger     "${{ inputs.trigger }}" \
             '{ appName: $appName, appVersion: $appVersion, gitCommit: $gitCommit, gitBranch: $gitBranch, trigger: $trigger, }'
         )
         echo "JSON: $json"

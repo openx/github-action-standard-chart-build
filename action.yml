@@ -29,8 +29,8 @@ runs:
         appVer=$(cat ${{ inputs.chart_dir }}/Chart.yaml | awk '$1 ~ /appVersion:/ { print $2 }' | tr -d '"')
         appName=$(cat ${{ inputs.chart_dir }}/Chart.yaml | awk '$1 ~ /^name:/ { print $2 }' | tr -d '"')
 
-        echo "::set-output name=appVersion::$appVer"
-        echo "::set-output name=appName::$appName"
+        echo "appVersion=$appVer" >> $GITHUB_OUTPUT
+        echo "appName=$appName" >> $GITHUB_OUTPUT
         echo "CHART_APP_NAME=$appName" >> $GITHUB_ENV 
         echo "CHART_APP_VERSION=$appVer" >> $GITHUB_ENV
         echo "CHART_PACKAGED_TGZ=$appName-${appVer}.tgz" >> $GITHUB_ENV
